@@ -1,22 +1,38 @@
 package org.example;
 
-
 import java.io.*;
 import java.net.Socket;
 
-public class Client extends Thread {
+public class Client {
+    public static void main(String[] args) {
+        try {
+            Socket socket = new Socket("77.232.130.200", 55555);
+            Client client = new Client(socket);
+
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     BufferedWriter out;
     BufferedReader in;
     BufferedReader reader;
     Socket socket;
     String nickname;
 
-    public Client(Socket socket,String nickname) throws IOException {
-        this.socket = socket;
-        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        reader = new BufferedReader(new InputStreamReader(System.in));
-        this.nickname = nickname;
+    public Client(Socket socket) {
+        try {
+            this.socket = socket;
+            out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            reader = new BufferedReader(new InputStreamReader(System.in));
+            this.inputNickname();
+            new Receive().start();
+            new Write().start();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
@@ -28,40 +44,46 @@ public class Client extends Thread {
         this.nickname = nickname;
     }
 
-    @Override
-    public void run() {
-        while (true){
+    public class Receive extends Thread {
+        public void run() {
             try {
-
-                receive();
-                write();
-            } catch (IOException e) {
+                String msg;
+                while (true) {
+                    msg = in.readLine();
+                    if(msg.equals("NICK")) break;
+                    else System.out.println(msg);
+                }
+            }catch (IOException e) {
                 throw new RuntimeException(e);
             }
-
         }
     }
 
-    public void receive() {
-        System.out.println("Введите никнейм: ");
-        try {
-            String msg = reader.readLine();
-            if (getNickname().equals("NICK")) {
-                setNickname(msg);
-                out.write(msg);
-                out.flush();
-            } else {
 
+    public class Write extends Thread {
+        public void run() {
+            while (true) {
+                String msg;
+                try {
+                    msg = reader.readLine();
+                    out.write(getNickname() + ": " + msg + "\n");
+                    out.flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
+
     }
 
-    public void write() throws IOException {
-
-        String msg = nickname + ": " + reader.readLine();
-        out.write(msg);
-        out.flush();
+    private void inputNickname() {
+        System.out.print("Choose your nickname: ");
+        try {
+            nickname = reader.readLine();
+            out.write(nickname);
+            out.flush();
+            setNickname(nickname);
+        } catch (IOException ignored) {
+        }
     }
 }
